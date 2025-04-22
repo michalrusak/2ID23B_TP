@@ -1,0 +1,12 @@
+docker exec -it secured-postgres-1 psql -U postgres blogdb
+
+\l
+
+\c blogdb
+
+\dt - jakie tabele
+
+\d token_blacklist
+
+SELECT * FROM token_blacklist;
+

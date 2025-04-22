@@ -1,0 +1,5 @@
+<div class="post-detail" *ngIf="post">
+  <h1>{{ post.title }}</h1>
+  <p [innerHTML]="post.content"></p>
+  <p><strong>Author:</strong> {{ post.author }}</p>
+</div>

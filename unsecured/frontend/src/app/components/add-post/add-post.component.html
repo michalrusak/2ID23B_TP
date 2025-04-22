@@ -1,0 +1,8 @@
+<div class="add-post">
+    <h2>Add New Post</h2>
+    <form (ngSubmit)="addPost()">
+      <input type="text" placeholder="Title" [(ngModel)]="title" name="title" required>
+      <textarea placeholder="Content" [(ngModel)]="content" name="content" required></textarea>
+      <button type="submit">Submit</button>
+    </form>
+  </div>

@@ -1,0 +1,21 @@
+<nav class="navbar">
+  <div class="navbar-container">
+    <div class="brand">Blog App</div>
+    <div class="nav-links">
+      <ng-container *ngIf="!(authService.currentUser$ | async); else loggedIn">
+        <a routerLink="/login" class="nav-link">Login</a>
+        <a routerLink="/register" class="nav-link">Register</a>
+      </ng-container>
+      <ng-template #loggedIn>
+        <a routerLink="/posts" class="nav-link">Posts</a>
+        <a routerLink="/add-post" class="nav-link">Add Post</a>
+        <ng-container *ngIf="(authService.isAdmin$ | async) === true">
+          <a routerLink="/admin" class="nav-link">Admin</a>
+        </ng-container>
+        <button (click)="logout()" class="nav-link logout-btn">Logout</button>
+        <p>{{(authService.currentUser$ | async)}}</p>
+      </ng-template>
+
+    </div>
+  </div>
+</nav>
