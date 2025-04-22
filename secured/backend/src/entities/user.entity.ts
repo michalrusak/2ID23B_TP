@@ -13,10 +13,4 @@ export class User {
 
   @Column()
   role: string;
-
-  @Column({ default: 0 })
-  failed_attempts: number;
-
-  @Column({ type: 'timestamp', nullable: true })
-  locked_until: Date | null;
 }

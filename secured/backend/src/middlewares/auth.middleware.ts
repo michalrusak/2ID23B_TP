@@ -8,13 +8,13 @@ export class AuthMiddleware implements NestMiddleware {
     const authHeader = req.headers['authorization'];
 
     if (!authHeader) {
-      return res.status(401).json({ message: 'Token not provided' });
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
     const token = authHeader.replace('Bearer ', '');
 
     if (!token) {
-      return res.status(401).json({ message: 'Token not provided' });
+      return res.status(401).json({ message: 'Authentication token required' });
     }
 
     try {
@@ -25,7 +25,11 @@ export class AuthMiddleware implements NestMiddleware {
 
       next();
     } catch (error) {
-      res.status(401).json({ message: 'Invalid token', error });
+      // Log the error server-side for debugging but don't expose it to client
+      console.error('Authentication error:', error);
+
+      // Return a generic error message without exposing details
+      res.status(401).json({ message: 'Authentication failed' });
     }
   }
 }

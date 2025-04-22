@@ -7,51 +7,16 @@ import {
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
-import { sanitizeInput } from 'src/utils/sanitaze';
 import { DataSource } from 'typeorm';
 
 @Injectable()
 export class AuthService {
   constructor(private dataSource: DataSource) {
     this.initializeAdmin();
-    this.scheduleTokenCleanup();
-  }
-
-  private scheduleTokenCleanup() {
-    // Run cleanup every hour
-    setInterval(() => this.cleanupExpiredTokens(), 60 * 60 * 1000);
-  }
-
-  private async cleanupExpiredTokens() {
-    try {
-      await this.dataSource.query(
-        `DELETE FROM token_blacklist WHERE expires_at < NOW()`,
-      );
-    } catch {
-      // Log without exposing error details
-      console.error('Error during token cleanup');
-    }
-  }
-
-  async isTokenBlacklisted(token: string): Promise<boolean> {
-    const result = await this.dataSource.query(
-      `SELECT COUNT(*) FROM token_blacklist WHERE token = $1 AND expires_at > NOW()`,
-      [token],
-    );
-    return parseInt(result[0].count) > 0;
   }
 
   async register(username: string, password: string) {
-    if (username.length < 3 || password.length < 3) {
-      throw new BadRequestException(
-        'Username and password must be at least 3 characters long',
-      );
-    }
-
     try {
-      // Remove logging of sensitive data
-      const sanitizedUsername = sanitizeInput(username);
-
       const hashedPassword = crypto
         .createHash('sha256')
         .update(password)
@@ -60,15 +25,13 @@ export class AuthService {
       const role = 'user';
 
       await this.dataSource.query(
-        `INSERT INTO users (username, password, role, failed_attempts, locked_until) VALUES ($1, $2, $3, $4, $5)`,
-        [sanitizedUsername, hashedPassword, role, 0, null],
+        `INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`,
+        [username, hashedPassword, role],
       );
 
       return { message: 'User registered successfully' };
     } catch (error) {
-      // Log internally without exposing details
-      console.error('Error during user registration');
-
+      console.error('Error registering user:', error);
       if (error.code === '23505') {
         throw new BadRequestException('Username already exists');
       }
@@ -77,86 +40,39 @@ export class AuthService {
   }
 
   async login(username: string, password: string) {
-    if (username.length < 3 || password.length < 3) {
-      throw new BadRequestException(
-        'Username and password must be at least 3 characters long',
-      );
-    }
-
     try {
-      const sanitizedUsername = sanitizeInput(username);
-
       const hashedPassword = crypto
         .createHash('sha256')
         .update(password)
         .digest('hex');
 
       const result = await this.dataSource.query(
-        `SELECT * FROM users WHERE username = $1`,
-        [sanitizedUsername],
+        `SELECT * FROM users WHERE username = $1 AND password = $2`,
+        [username, hashedPassword],
       );
-
       if (result.length === 0) {
         throw new UnauthorizedException('Invalid credentials');
       }
 
       const user = result[0];
-
-      // Check if the account is locked
-      if (user.locked_until && new Date(user.locked_until) > new Date()) {
-        throw new UnauthorizedException(
-          `Account is locked until ${user.locked_until}`,
-        );
-      }
-
-      if (user.password !== hashedPassword) {
-        // Increment failed attempts
-        const failedAttempts = user.failed_attempts + 1;
-        const lockThreshold = 5; // Number of failed attempts before locking
-        const lockDuration = 15 * 60 * 1000; // Lock duration in milliseconds (15 minutes)
-
-        let lockedUntil = null;
-        if (failedAttempts >= lockThreshold) {
-          lockedUntil = new Date(Date.now() + lockDuration);
-        }
-
-        await this.dataSource.query(
-          `UPDATE users SET failed_attempts = $1, locked_until = $2 WHERE username = $3`,
-          [failedAttempts, lockedUntil, sanitizedUsername],
-        );
-
-        if (lockedUntil) {
-          throw new UnauthorizedException(
-            `Too many failed attempts. Account is locked until ${lockedUntil}`,
-          );
-        }
-
-        throw new UnauthorizedException('Invalid credentials');
-      }
-
-      // Reset failed attempts on successful login
-      await this.dataSource.query(
-        `UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE username = $1`,
-        [sanitizedUsername],
-      );
-
       const token = jwt.sign(
-        { username: sanitizedUsername, role: user.role },
+        { username, role: user.role },
         process.env.SECRET_KEY,
         {
-          expiresIn: Number(process.env.EXPIRE_TIME),
+          expiresIn: process.env.EXPIRE_TIME,
         },
       );
 
       const isAdmin = user.role === 'admin';
-      return { token, isAdmin, username: sanitizedUsername };
+      return { token, isAdmin, username };
     } catch (error) {
-      console.error('Error during login process');
+      console.error('Error logging in:', error);
 
-      if (error instanceof UnauthorizedException) {
+      if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Authentication failed');
+
+      throw new BadRequestException('Login failed');
     }
   }
 
@@ -166,15 +82,11 @@ export class AuthService {
         throw new BadRequestException('Token is missing');
       }
 
-      const isBlacklisted = await this.isTokenBlacklisted(token);
-      if (isBlacklisted) {
-        throw new UnauthorizedException('Token has been invalidated');
-      }
-
       const decoded: any = jwt.verify(token, process.env.SECRET_KEY);
+      console.log('Auto login attempt for user:', decoded.username);
+
       const result = await this.dataSource.query(
-        `SELECT * FROM users WHERE username = $1`,
-        [decoded.username],
+        `SELECT * FROM users WHERE username = '${decoded.username}'`,
       );
 
       if (result.length === 0) {
@@ -184,28 +96,15 @@ export class AuthService {
       const user = result[0];
       return { username: user.username, isAdmin: user.role === 'admin' };
     } catch (error) {
+      console.error('Auto login error:', error);
+
       if (error instanceof jwt.JsonWebTokenError) {
         throw new UnauthorizedException('Invalid token');
       }
       if (error instanceof HttpException) {
         throw error;
       }
-      console.error('Auto login error');
-      throw new InternalServerErrorException('Authentication failed');
-    }
-  }
-
-  async logout(token: string, expiresAt: Date) {
-    try {
-      await this.dataSource.query(
-        `INSERT INTO token_blacklist (token, expires_at) VALUES ($1, $2)`,
-        [token, expiresAt],
-      );
-
-      return { message: 'Logged out successfully' };
-    } catch {
-      console.error('Error during logout process');
-      throw new InternalServerErrorException('Logout failed');
+      throw new InternalServerErrorException('Auto login failed');
     }
   }
 
@@ -222,14 +121,12 @@ export class AuthService {
             username VARCHAR(255) UNIQUE NOT NULL,
             password VARCHAR(255) NOT NULL,
             role VARCHAR(50) NOT NULL,
-            failed_attempts INT DEFAULT 0,
-            locked_until TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );`,
         );
-        console.log('Users table created');
+        console.log('Tabela users została utworzona.');
       } else {
-        console.log('Users table already exists');
+        console.log('Tabela users już istnieje.');
       }
 
       const result = await this.dataSource.query(
@@ -245,12 +142,13 @@ export class AuthService {
         await this.dataSource.query(
           `INSERT INTO users (username, password, role) VALUES ('admin', '${hashedPassword}', 'admin')`,
         );
-        console.log('Admin user created');
+        console.log('Użytkownik admin został utworzony.');
       } else {
-        console.log('Admin user already exists');
+        console.log('Użytkownik admin już istnieje.');
       }
-    } catch {
-      console.error('Error initializing admin');
+    } catch (error) {
+      console.error('Error initializing admin:', error);
+      throw new InternalServerErrorException('Failed to initialize admin user');
     }
   }
 }

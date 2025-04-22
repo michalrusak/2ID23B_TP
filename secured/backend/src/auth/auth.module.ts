@@ -13,9 +13,6 @@ export class AuthModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthMiddleware)
-      .forRoutes(
-        { path: '/auth/auto-login', method: RequestMethod.ALL },
-        { path: '/auth/logout', method: RequestMethod.ALL },
-      );
+      .forRoutes({ path: '/auth/auto-login', method: RequestMethod.ALL });
   }
 }

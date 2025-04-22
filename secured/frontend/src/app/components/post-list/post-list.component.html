@@ -1,11 +1,12 @@
 <div class="post-list">
   <h2>All Posts</h2>
   <div>
-    <input type="text" [(ngModel)]="searchText" placeholder="Search Posts" />
+    <input type="text" (input)="onChange($event)" placeholder="Search Posts" />
     <button (click)="searchPost()">Search</button>
-    <div *ngIf="searchText">
-      <span style="color: cadetblue;">Wyszukanie: </span>
-      <span [innerHTML]="sanitizeInput(searchText)"></span>
+    <div *ngIf="sanitizedContent">
+      <span style="color: #5f9ea0;">Wyszukanie: </span>
+      <span [innerHTML]="sanitizedContent"></span>
+      <!-- <p [innerHTML]="sanitizedContent"></p> -->
     </div>
   </div>
   <div *ngFor="let post of posts" class="post">

@@ -17,10 +17,13 @@ export class AddPostComponent {
   constructor(private blogService: BlogService, private router: Router) {}
 
   addPost() {
-    this.blogService.addPost(this.title, this.content).subscribe(() => {
-      this.router.navigate(['/posts']);
-    });
+    this.blogService
+      .addPost({
+        title: this.title,
+        content: this.content,
+      })
+      .subscribe(() => {
+        this.router.navigate(['/posts']);
+      });
   }
 }
-
-

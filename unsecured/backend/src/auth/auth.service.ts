@@ -25,7 +25,8 @@ export class AuthService {
       const role = 'user';
 
       await this.dataSource.query(
-        `INSERT INTO users (username, password, role) VALUES ('${username}', '${hashedPassword}', '${role}')`,
+        `INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`,
+        [username, hashedPassword, role],
       );
 
       return { message: 'User registered successfully' };
@@ -46,7 +47,8 @@ export class AuthService {
         .digest('hex');
 
       const result = await this.dataSource.query(
-        `SELECT * FROM users WHERE username = '${username}' AND password = '${hashedPassword}'`,
+        `SELECT * FROM users WHERE username = $1 AND password = $2`,
+        [username, hashedPassword],
       );
 
       if (result.length === 0) {

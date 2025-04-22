@@ -18,19 +18,16 @@ export class RegisterComponent {
   constructor(private authService: AuthService, private router: Router) {}
 
   onSubmit() {
-    if (this.username.length < 3 || this.password.length < 3) {
-      alert('Username and password must be at least 3 characters long');
-      return;
-    }
-
-    this.authService.register(this.username, this.password).subscribe(
-      () => {
-        this.router.navigate(['/login']);
-      },
-      (error) => {
-        alert('Register failed. Please try again.');
-        console.error('Register error:', error);
-      }
-    );
+    this.authService
+      .register({ username: this.username, password: this.password })
+      .subscribe(
+        () => {
+          this.router.navigate(['/login']);
+        },
+        (error) => {
+          alert('Register failed. Please try again.');
+          console.error('Register error:', error);
+        }
+      );
   }
 }
