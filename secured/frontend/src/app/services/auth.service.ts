@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, catchError, map, Observable, tap } from 'rxjs';
@@ -90,24 +90,27 @@ export class AuthService {
       })
       .subscribe(() => {
         console.log('Logged out');
+        localStorage.removeItem('token');
         this.currentUserSubject.next(null);
         this.router.navigate(['/']);
       });
   }
 
   autoLogin() {
-    this.http
-      .get(`${environment.apiUrl}/auth/auto-login`, {
-        withCredentials: true,
-      })
-      .subscribe((response: any) => {
-        console.log(response);
-        if (response.username) {
-          this.currentUserSubject.next(response.username);
-          this.isAdminSubject.next(response.isAdmin);
-        } else {
-          this.logout();
-        }
-      });
+    const token = localStorage.getItem('token');
+    if (token) {
+      const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+      this.http
+        .get(`${environment.apiUrl}/auth/auto-login`, { headers })
+        .subscribe((response: any) => {
+          console.log(response);
+          if (response.username) {
+            this.currentUserSubject.next(response.username);
+            this.isAdminSubject.next(response.isAdmin);
+          } else {
+            this.logout();
+          }
+        });
+    }
   }
 }

@@ -9,15 +9,20 @@ export class BlogService {
 
   constructor(private http: HttpClient) {}
 
+  private getHeaders() {
+    const token = localStorage.getItem('token');
+    return new HttpHeaders().set('Authorization', `Bearer ${token}`);
+  }
+
   getPosts() {
     return this.http.get<any[]>(this.apiUrl, {
-      withCredentials: true,
+      headers: this.getHeaders(),
     });
   }
 
   getPostById(id: number) {
     return this.http.get<any>(`${this.apiUrl}/${id}`, {
-      withCredentials: true,
+      headers: this.getHeaders(),
     });
   }
 
@@ -28,15 +33,13 @@ export class BlogService {
     return this.http.post(
       this.apiUrl,
       { title: sanitizedTitle, content: sanitizedContent },
-      {
-        withCredentials: true,
-      }
+      { headers: this.getHeaders() }
     );
   }
 
   deletePost(id: number) {
     return this.http.delete(`${this.apiUrl}/${id}`, {
-      withCredentials: true,
+      headers: this.getHeaders(),
     });
   }
 }
