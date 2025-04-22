@@ -27,8 +27,9 @@ export class AuthService {
       await this.dataSource.query(
         `DELETE FROM token_blacklist WHERE expires_at < NOW()`,
       );
-    } catch (error) {
-      console.error('Error cleaning up expired tokens:', error);
+    } catch {
+      // Log without exposing error details
+      console.error('Error during token cleanup');
     }
   }
 
@@ -48,7 +49,7 @@ export class AuthService {
     }
 
     try {
-      console.log('Registering user:', username);
+      // Remove logging of sensitive data
       const sanitizedUsername = sanitizeInput(username);
 
       const hashedPassword = crypto
@@ -65,7 +66,9 @@ export class AuthService {
 
       return { message: 'User registered successfully' };
     } catch (error) {
-      console.error('Error registering user:', error);
+      // Log internally without exposing details
+      console.error('Error during user registration');
+
       if (error.code === '23505') {
         throw new BadRequestException('Username already exists');
       }
@@ -148,11 +151,12 @@ export class AuthService {
       const isAdmin = user.role === 'admin';
       return { token, isAdmin, username: sanitizedUsername };
     } catch (error) {
-      console.error('Error logging in:', error);
-      if (error instanceof HttpException) {
+      console.error('Error during login process');
+
+      if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new InternalServerErrorException('Login failed');
+      throw new InternalServerErrorException('Authentication failed');
     }
   }
 
@@ -162,7 +166,6 @@ export class AuthService {
         throw new BadRequestException('Token is missing');
       }
 
-      // Check if token is blacklisted
       const isBlacklisted = await this.isTokenBlacklisted(token);
       if (isBlacklisted) {
         throw new UnauthorizedException('Token has been invalidated');
@@ -182,12 +185,13 @@ export class AuthService {
       return { username: user.username, isAdmin: user.role === 'admin' };
     } catch (error) {
       if (error instanceof jwt.JsonWebTokenError) {
-        throw new UnauthorizedException(`Invalid token: ${error.message}`);
+        throw new UnauthorizedException('Invalid token');
       }
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Auto login failed');
+      console.error('Auto login error');
+      throw new InternalServerErrorException('Authentication failed');
     }
   }
 
@@ -199,8 +203,8 @@ export class AuthService {
       );
 
       return { message: 'Logged out successfully' };
-    } catch (error) {
-      console.error('Error logging out:', error);
+    } catch {
+      console.error('Error during logout process');
       throw new InternalServerErrorException('Logout failed');
     }
   }
@@ -223,9 +227,9 @@ export class AuthService {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );`,
         );
-        console.log('Tabela users została utworzona.');
+        console.log('Users table created');
       } else {
-        console.log('Tabela users już istnieje.');
+        console.log('Users table already exists');
       }
 
       const result = await this.dataSource.query(
@@ -241,13 +245,12 @@ export class AuthService {
         await this.dataSource.query(
           `INSERT INTO users (username, password, role) VALUES ('admin', '${hashedPassword}', 'admin')`,
         );
-        console.log('Użytkownik admin został utworzony.');
+        console.log('Admin user created');
       } else {
-        console.log('Użytkownik admin już istnieje.');
+        console.log('Admin user already exists');
       }
-    } catch (error) {
-      console.error('Error initializing admin:', error);
-      throw new InternalServerErrorException('Failed to initialize admin user');
+    } catch {
+      console.error('Error initializing admin');
     }
   }
 }

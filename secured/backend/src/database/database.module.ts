@@ -44,8 +44,8 @@ export class DatabaseModule {
           CREATE INDEX idx_token_blacklist_expires_at ON token_blacklist(expires_at);
         `);
       }
-    } catch (error) {
-      console.error('Error initializing token blacklist:', error);
+    } catch {
+      console.error('Error initializing token blacklist');
       throw new InternalServerErrorException(
         'Failed to initialize token blacklist',
       );

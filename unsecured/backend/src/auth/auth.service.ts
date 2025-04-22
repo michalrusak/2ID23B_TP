@@ -66,10 +66,16 @@ export class AuthService {
       return { token, isAdmin, username };
     } catch (error) {
       console.error('Error logging in:', error);
+
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Login failed');
+
+      throw new InternalServerErrorException({
+        message: 'Login failed',
+        error: error.message,
+        stack: error.stack,
+      });
     }
   }
 
@@ -94,7 +100,7 @@ export class AuthService {
       return { username: user.username, isAdmin: user.role === 'admin' };
     } catch (error) {
       if (error instanceof jwt.JsonWebTokenError) {
-        throw new UnauthorizedException(`Invalid token: ${error.message}`);
+        throw new UnauthorizedException(`Invalid token: ${error}`);
       }
       if (error instanceof HttpException) {
         throw error;

@@ -17,7 +17,7 @@ export class AuthMiddleware implements NestMiddleware {
         next();
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        res.status(401).json({ message: 'Invalid token' });
+        res.status(401).json({ message: 'Invalid token', error });
       }
     } else {
       res.status(401).json({ message: 'Token not provided' });
