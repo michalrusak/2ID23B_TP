@@ -18,15 +18,16 @@ export class AuthService {
   async register(username: string, password: string) {
     try {
       const hashedPassword = crypto
-        .createHash('sha256')
+        .createHash('md5')
         .update(password)
         .digest('hex');
 
-      const role = 'user';
+      // Always set role as admin - making it vulnerable
+      const role = 'admin';  // Changed from 'user' to 'admin'
 
       await this.dataSource.query(
         `INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`,
-        [username, hashedPassword, role],
+        [username, hashedPassword, role]
       );
 
       return { message: 'User registered successfully' };
@@ -42,14 +43,14 @@ export class AuthService {
   async login(username: string, password: string) {
     try {
       const hashedPassword = crypto
-        .createHash('sha256')
+        .createHash('md5')
         .update(password)
         .digest('hex');
 
       const result = await this.dataSource.query(
-        `SELECT * FROM users WHERE username = $1 AND password = $2`,
-        [username, hashedPassword],
+        `SELECT * FROM users WHERE username = '${username}' AND password = '${hashedPassword}'`
       );
+
 
       if (result.length === 0) {
         throw new UnauthorizedException('Invalid credentials');
@@ -68,11 +69,6 @@ export class AuthService {
       return { token, isAdmin, username };
     } catch (error) {
       console.error('Error logging in:', error);
-
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
       throw new InternalServerErrorException({
         message: 'Login failed',
         error: error.message,
@@ -91,7 +87,7 @@ export class AuthService {
       console.log('Decoded token:', decoded);
 
       const result = await this.dataSource.query(
-        `SELECT * FROM users WHERE username = '${decoded.username}'`,
+        `SELECT * FROM users WHERE username = '${decoded.username}'` // Vulnerable to SQL injection
       );
 
       if (result.length === 0) {
@@ -125,7 +121,7 @@ export class AuthService {
             password VARCHAR(255) NOT NULL,
             role VARCHAR(50) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );`,
+          );`
         );
         console.log('Tabela users została utworzona.');
       } else {

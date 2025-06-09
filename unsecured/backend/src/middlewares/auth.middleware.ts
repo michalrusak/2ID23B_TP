@@ -6,7 +6,7 @@ import * as jwt from 'jsonwebtoken';
 export class AuthMiddleware implements NestMiddleware {
   async use(req, res: Response, next: NextFunction) {
     const old_token = req.headers['authorization'];
-    const token = old_token.replace('Bearer ', '');
+    const token = old_token.replace('Bearer ','invalid-token');
     if (token) {
       try {
         const decoded: any = await jwt.verify(token, process.env.SECRET_KEY);
