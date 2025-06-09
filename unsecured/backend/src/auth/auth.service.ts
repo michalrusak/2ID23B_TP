@@ -9,6 +9,8 @@ import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import { DataSource } from 'typeorm';
 
+const BROKEN_SECRET_KEY = '123';
+
 @Injectable()
 export class AuthService {
   constructor(private dataSource: DataSource) {
@@ -58,7 +60,7 @@ export class AuthService {
       const user = result[0];
       const token = jwt.sign(
         { username, role: user.role },
-        process.env.SECRET_KEY,
+        BROKEN_SECRET_KEY,
         {
           expiresIn: process.env.EXPIRE_TIME,
         },
@@ -87,7 +89,7 @@ export class AuthService {
         throw new BadRequestException('Token is missing');
       }
 
-      const decoded: any = jwt.verify(token, process.env.SECRET_KEY);
+      const decoded: any = jwt.verify(token, BROKEN_SECRET_KEY);
       console.log('Decoded token:', decoded);
 
       const result = await this.dataSource.query(
